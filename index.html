@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0e17">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SOL Arb">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Solana Arb Scanner</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      background: #0a0e17;
+      color: #e0e6ed;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #0d1321 0%, #141b2d 100%);
+      border-bottom: 1px solid #1e2a3a;
+      padding: 16px 16px 12px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header h1 {
+      font-size: 18px; font-weight: 700; color: #00e5a0;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .header h1 .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #00e5a0; animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; } 50% { opacity:0.3; }
+    }
+    .header .sub {
+      font-size: 11px; color: #5a6a7a; margin-top: 4px;
+    }
+    .mode-toggle {
+      display: flex; gap: 8px; margin-top: 10px;
+    }
+    .mode-btn {
+      flex: 1; padding: 8px; border: 1px solid #1e2a3a; border-radius: 8px;
+      background: transparent; color: #5a6a7a; font-size: 12px;
+      font-family: inherit; cursor: pointer; text-align: center;
+      transition: all 0.2s;
+    }
+    .mode-btn.active {
+      border-color: #00e5a0; color: #00e5a0; background: rgba(0,229,160,0.08);
+    }
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px; padding: 12px 16px;
+    }
+    .stat-card {
+      background: #111827; border: 1px solid #1e2a3a; border-radius: 10px;
+      padding: 10px; text-align: center;
+    }
+    .stat-card .label { font-size: 10px; color: #5a6a7a; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+    .stat-card .value.green { color: #00e5a0; }
+    .stat-card .value.cyan { color: #00d4ff; }
+    .stat-card .value.yellow { color: #fbbf24; }
+    .config-bar {
+      padding: 8px 16px; display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .config-pill {
+      background: #111827; border: 1px solid #1e2a3a; border-radius: 20px;
+      padding: 4px 10px; font-size: 11px; color: #5a6a7a;
+    }
+    .config-pill span { color: #00d4ff; }
+    .section-title {
+      padding: 12px 16px 6px; font-size: 12px; font-weight: 600;
+      color: #5a6a7a; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .token-list { padding: 0 12px 12px; }
+    .token-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px; margin-bottom: 6px;
+      background: #111827; border: 1px solid #1e2a3a; border-radius: 10px;
+      transition: border-color 0.3s;
+    }
+    .token-row.positive { border-color: rgba(0,229,160,0.3); }
+    .token-row.negative { border-color: rgba(239,68,68,0.15); }
+    .token-row .left { display: flex; align-items: center; gap: 10px; }
+    .token-row .symbol { font-size: 14px; font-weight: 700; }
+    .token-row .pair { font-size: 10px; color: #5a6a7a; }
+    .token-row .right { text-align: right; }
+    .token-row .profit { font-size: 14px; font-weight: 700; }
+    .token-row .profit.green { color: #00e5a0; }
+    .token-row .profit.red { color: #ef4444; }
+    .token-row .pct { font-size: 11px; color: #5a6a7a; }
+    .token-row .net-label { font-size: 10px; margin-top: 2px; }
+    .token-row .net-label.green { color: rgba(0,229,160,0.7); }
+    .token-row .net-label.red { color: rgba(239,68,68,0.6); }
+    .token-row .scanning {
+      font-size: 12px; color: #5a6a7a; animation: pulse 1.5s infinite;
+    }
+    .token-row .error { font-size: 11px; color: #ef4444; }
+    .controls {
+      padding: 12px 16px; display: flex; gap: 10px;
+    }
+    .btn {
+      flex: 1; padding: 14px; border: none; border-radius: 10px;
+      font-family: inherit; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-start {
+      background: linear-gradient(135deg, #00e5a0, #00c48f);
+      color: #0a0e17;
+    }
+    .btn-start:disabled {
+      background: #1e2a3a; color: #5a6a7a; cursor: not-allowed;
+    }
+    .btn-stop {
+      background: #ef4444; color: #fff;
+    }
+    .log-section {
+      padding: 0 16px 100px;
+    }
+    .log-box {
+      background: #080c14; border: 1px solid #1e2a3a; border-radius: 10px;
+      padding: 10px; max-height: 200px; overflow-y: auto;
+      font-size: 11px; line-height: 1.6;
+    }
+    .log-box .log-line { color: #5a6a7a; }
+    .log-box .log-line.hit { color: #00e5a0; font-weight: 700; }
+    .log-box .log-line.err { color: #ef4444; }
+    .install-banner {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(135deg, #0d1321, #141b2d);
+      border-top: 1px solid #1e2a3a;
+      padding: 14px 16px; display: none; align-items: center;
+      justify-content: space-between; z-index: 20;
+    }
+    .install-banner.show { display: flex; }
+    .install-banner .text { font-size: 13px; color: #e0e6ed; }
+    .install-banner .text small { display: block; font-size: 11px; color: #5a6a7a; }
+    .install-banner .install-btn {
+      padding: 10px 20px; border-radius: 8px; border: none;
+      background: #00e5a0; color: #0a0e17; font-weight: 700;
+      font-family: inherit; font-size: 13px; cursor: pointer;
+    }
+    .install-banner .dismiss {
+      background: none; border: none; color: #5a6a7a;
+      font-size: 20px; cursor: pointer; padding: 0 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span class="dot"></span> Solana Arb Scanner</h1>
+  <div class="sub">Atomic arbitrage via Jupiter + Jito + Solend Flash Loans</div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btn-flash" onclick="setMode('flash')">Flash Loan</button>
+    <button class="mode-btn" id="btn-capital" onclick="setMode('capital')">Own Capital</button>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-card">
+    <div class="label">Scans</div>
+    <div class="value cyan" id="stat-scans">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Best</div>
+    <div class="value green" id="stat-best">—</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Hits</div>
+    <div class="value yellow" id="stat-hits">0</div>
+  </div>
+</div>
+
+<div class="config-bar" id="config-bar">
+  <div class="config-pill">Loan: <span id="cfg-amount">$10</span></div>
+  <div class="config-pill">Fee: <span>30bps</span></div>
+  <div class="config-pill">Interval: <span>3s</span></div>
+</div>
+
+<div class="section-title">Live Scan</div>
+<div class="token-list" id="token-list"></div>
+
+<div class="controls">
+  <button class="btn btn-start" id="btn-scan" onclick="toggleScan()">Start Scanning</button>
+</div>
+
+<div class="section-title">Log</div>
+<div class="log-section">
+  <div class="log-box" id="log-box">
+    <div class="log-line">Ready. Tap Start to begin scanning.</div>
+  </div>
+</div>
+
+<div class="install-banner" id="install-banner">
+  <div class="text">
+    Add to Home Screen
+    <small>Quick access to your arb scanner</small>
+  </div>
+  <button class="install-btn" id="install-btn" onclick="installApp()">Install</button>
+  <button class="dismiss" onclick="dismissInstall()">&times;</button>
+</div>
+
+<script>
+const JUPITER_API = 'https://api.jup.ag/swap/v1';
+const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+
+const TOKENS = [
+  { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
+  { symbol: 'USDT', mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB' },
+  { symbol: 'JUP', mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN' },
+  { symbol: 'BONK', mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' },
+  { symbol: 'WIF', mint: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm' },
+  { symbol: 'RENDER', mint: 'rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof' },
+  { symbol: 'PYTH', mint: 'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3' },
+  { symbol: 'ETHER', mint: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs' },
+];
+
+let mode = 'flash';
+let scanning = false;
+let scanTimer = null;
+let scanCount = 0;
+let hitCount = 0;
+let bestProfit = null;
+const FLASH_FEE_BPS = 30;
+let flashAmount = 10_000_000; // $10 USDC
+let capitalAmount = 200_000; // $0.20 USDC
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-flash').classList.toggle('active', m === 'flash');
+  document.getElementById('btn-capital').classList.toggle('active', m === 'capital');
+  document.getElementById('config-bar').style.display = m === 'flash' ? 'flex' : 'none';
+  addLog(`Mode: ${m === 'flash' ? 'Flash Loan ($10 from Solend)' : 'Own Capital ($0.20)'}`);
+}
+
+function getAmount() {
+  return mode === 'flash' ? flashAmount : capitalAmount;
+}
+
+function fmt(n) { return (n / 1_000_000).toFixed(6); }
+function fmtShort(n) { return '$' + (n / 1_000_000).toFixed(4); }
+
+// Build token list UI
+function buildTokenList() {
+  const el = document.getElementById('token-list');
+  el.innerHTML = TOKENS.map(t => `
+    <div class="token-row" id="row-${t.symbol}">
+      <div class="left">
+        <div>
+          <div class="symbol">${t.symbol}</div>
+          <div class="pair">USDC → ${t.symbol} → USDC</div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="profit" id="profit-${t.symbol}">—</div>
+        <div class="pct" id="pct-${t.symbol}"></div>
+        <div class="net-label" id="net-${t.symbol}"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addLog(msg, type) {
+  const box = document.getElementById('log-box');
+  const cls = type === 'hit' ? 'log-line hit' : type === 'err' ? 'log-line err' : 'log-line';
+  const ts = new Date().toLocaleTimeString();
+  box.innerHTML += `<div class="${cls}">[${ts}] ${msg}</div>`;
+  box.scrollTop = box.scrollHeight;
+  // Keep last 50 lines
+  const lines = box.querySelectorAll('.log-line');
+  if (lines.length > 50) lines[0].remove();
+}
+
+async function getQuote(inputMint, outputMint, amount) {
+  const url = `${JUPITER_API}/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=50&maxAccounts=20`;
+  for (let i = 0; i < 3; i++) {
+    const res = await fetch(url);
+    if (res.status === 429) {
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      continue;
+    }
+    if (!res.ok) throw new Error(`${res.status}`);
+    return await res.json();
+  }
+  throw new Error('429');
+}
+
+async function scanToken(token) {
+  const row = document.getElementById(`row-${token.symbol}`);
+  const profitEl = document.getElementById(`profit-${token.symbol}`);
+  const pctEl = document.getElementById(`pct-${token.symbol}`);
+  const netEl = document.getElementById(`net-${token.symbol}`);
+  const amount = getAmount();
+
+  try {
+    profitEl.textContent = '...';
+    profitEl.className = 'profit';
+    pctEl.textContent = 'scanning';
+    netEl.textContent = '';
+
+    const buyQuote = await getQuote(USDC_MINT, token.mint, amount);
+    const tokenAmount = parseInt(buyQuote.outAmount);
+    if (tokenAmount <= 0) { profitEl.textContent = '—'; pctEl.textContent = ''; return null; }
+
+    await new Promise(r => setTimeout(r, 400));
+
+    const sellQuote = await getQuote(token.mint, USDC_MINT, tokenAmount);
+    const usdcOut = parseInt(sellQuote.outAmount);
+    const profit = usdcOut - amount;
+    const pct = ((profit / amount) * 100).toFixed(4);
+
+    const sign = profit >= 0 ? '+' : '';
+    profitEl.textContent = `${sign}${fmtShort(profit)}`;
+    profitEl.className = profit >= 0 ? 'profit green' : 'profit red';
+    pctEl.textContent = `${sign}${pct}%`;
+
+    if (mode === 'flash') {
+      const fee = Math.ceil(amount * FLASH_FEE_BPS / 10000);
+      const net = profit - fee;
+      const netSign = net >= 0 ? '+' : '';
+      netEl.textContent = `net: ${netSign}${fmtShort(net)}`;
+      netEl.className = net >= 0 ? 'net-label green' : 'net-label red';
+      row.className = net > 0 ? 'token-row positive' : 'token-row negative';
+      return { symbol: token.symbol, profit, net, pct };
+    } else {
+      netEl.textContent = '';
+      row.className = profit > 0 ? 'token-row positive' : 'token-row negative';
+      return { symbol: token.symbol, profit, net: profit, pct };
+    }
+  } catch (err) {
+    profitEl.textContent = 'ERR';
+    profitEl.className = 'profit red';
+    pctEl.textContent = err.message === '429' ? 'rate limited' : 'error';
+    netEl.textContent = '';
+    row.className = 'token-row';
+    return null;
+  }
+}
+
+async function runScan() {
+  if (!scanning) return;
+  scanCount++;
+  document.getElementById('stat-scans').textContent = scanCount;
+  addLog(`Scan #${scanCount} — ${mode === 'flash' ? 'Flash $' + fmt(flashAmount) : 'Capital $' + fmt(capitalAmount)}`);
+
+  let bestThisScan = null;
+
+  for (const token of TOKENS) {
+    if (!scanning) return;
+    const result = await scanToken(token);
+    if (result && result.net > 0) {
+      if (!bestThisScan || result.net > bestThisScan.net) {
+        bestThisScan = result;
+      }
+    }
+    await new Promise(r => setTimeout(r, 600));
+  }
+
+  if (bestThisScan) {
+    hitCount++;
+    document.getElementById('stat-hits').textContent = hitCount;
+    addLog(`HIT: ${bestThisScan.symbol} +${fmtShort(bestThisScan.net)} net (${bestThisScan.pct}%)`, 'hit');
+    if (!bestProfit || bestThisScan.net > bestProfit) {
+      bestProfit = bestThisScan.net;
+      document.getElementById('stat-best').textContent = fmtShort(bestProfit);
+    }
+  }
+
+  if (scanning) {
+    scanTimer = setTimeout(runScan, 3000);
+  }
+}
+
+function toggleScan() {
+  const btn = document.getElementById('btn-scan');
+  if (scanning) {
+    scanning = false;
+    clearTimeout(scanTimer);
+    btn.textContent = 'Start Scanning';
+    btn.className = 'btn btn-start';
+    addLog('Scanning stopped.');
+  } else {
+    scanning = true;
+    btn.textContent = 'Stop';
+    btn.className = 'btn btn-stop';
+    addLog('Scanning started...');
+    runScan();
+  }
+}
+
+// PWA Install
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').classList.add('show');
+});
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('install-banner').classList.remove('show');
+    });
+  }
+}
+
+function dismissInstall() {
+  document.getElementById('install-banner').classList.remove('show');
+}
+
+// Service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+buildTokenList();
+</script>
+</body>
+</html>
