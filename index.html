@@ -279,16 +279,25 @@ function addLog(msg, type) {
 
 async function getQuote(inputMint, outputMint, amount) {
   const url = `${JUPITER_API}/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=50&maxAccounts=20`;
-  for (let i = 0; i < 3; i++) {
-    const res = await fetch(url);
-    if (res.status === 429) {
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-      continue;
+  for (let i = 0; i < 4; i++) {
+    try {
+      const res = await fetch(url);
+      if (res.status === 429) {
+        addLog(`Rate limited, waiting ${(i+1)*2}s...`, 'err');
+        await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+        continue;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      if (i < 3) {
+        await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+        continue;
+      }
+      throw e;
     }
-    if (!res.ok) throw new Error(`${res.status}`);
-    return await res.json();
   }
-  throw new Error('429');
+  throw new Error('rate limited');
 }
 
 async function scanToken(token) {
@@ -308,7 +317,7 @@ async function scanToken(token) {
     const tokenAmount = parseInt(buyQuote.outAmount);
     if (tokenAmount <= 0) { profitEl.textContent = '—'; pctEl.textContent = ''; return null; }
 
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 1200));
 
     const sellQuote = await getQuote(token.mint, USDC_MINT, tokenAmount);
     const usdcOut = parseInt(sellQuote.outAmount);
@@ -336,7 +345,7 @@ async function scanToken(token) {
   } catch (err) {
     profitEl.textContent = 'ERR';
     profitEl.className = 'profit red';
-    pctEl.textContent = err.message === '429' ? 'rate limited' : 'error';
+    pctEl.textContent = err.message.includes('rate') ? 'rate limited' : 'error';
     netEl.textContent = '';
     row.className = 'token-row';
     return null;
@@ -359,7 +368,7 @@ async function runScan() {
         bestThisScan = result;
       }
     }
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 1500));
   }
 
   if (bestThisScan) {
@@ -373,7 +382,7 @@ async function runScan() {
   }
 
   if (scanning) {
-    scanTimer = setTimeout(runScan, 3000);
+    scanTimer = setTimeout(runScan, 5000);
   }
 }
 
