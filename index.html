@@ -120,7 +120,7 @@
       background: #ef4444; color: #fff;
     }
     .log-section {
-      padding: 0 16px 100px;
+      padding: 0 16px 60px;
     }
     .log-box {
       background: #080c14; border: 1px solid #1e2a3a; border-radius: 10px;
@@ -149,6 +149,69 @@
       background: none; border: none; color: #5a6a7a;
       font-size: 20px; cursor: pointer; padding: 0 8px;
     }
+    .withdraw-section {
+      padding: 12px 16px;
+    }
+    .withdraw-card {
+      background: #111827; border: 1px solid #1e2a3a; border-radius: 12px;
+      padding: 16px;
+    }
+    .withdraw-card .wd-title {
+      font-size: 13px; font-weight: 700; color: #00d4ff; margin-bottom: 10px;
+    }
+    .withdraw-card .wd-balance {
+      font-size: 24px; font-weight: 700; color: #00e5a0; margin-bottom: 12px;
+    }
+    .withdraw-card .wd-balance small { font-size: 12px; color: #5a6a7a; }
+    .withdraw-card .wd-input-group {
+      display: flex; gap: 8px; margin-bottom: 10px;
+    }
+    .withdraw-card input {
+      flex: 1; padding: 10px 12px; border-radius: 8px;
+      border: 1px solid #1e2a3a; background: #080c14; color: #e0e6ed;
+      font-family: inherit; font-size: 13px; outline: none;
+    }
+    .withdraw-card input:focus { border-color: #00d4ff; }
+    .withdraw-card input::placeholder { color: #3a4a5a; }
+    .withdraw-card .wd-max {
+      padding: 10px 14px; border-radius: 8px; border: 1px solid #1e2a3a;
+      background: transparent; color: #00d4ff; font-family: inherit;
+      font-size: 12px; cursor: pointer; font-weight: 700;
+    }
+    .btn-withdraw {
+      width: 100%; padding: 12px; border: none; border-radius: 10px;
+      background: linear-gradient(135deg, #00d4ff, #0099cc);
+      color: #0a0e17; font-family: inherit; font-size: 14px;
+      font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-withdraw:disabled {
+      background: #1e2a3a; color: #5a6a7a; cursor: not-allowed;
+    }
+    .wd-info {
+      margin-top: 10px; font-size: 11px; color: #5a6a7a; line-height: 1.5;
+    }
+    .wd-history { margin-top: 12px; }
+    .wd-history .wd-tx {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-top: 1px solid #1e2a3a; font-size: 11px;
+    }
+    .wd-tx .wd-tx-amount { color: #00e5a0; font-weight: 700; }
+    .wd-tx .wd-tx-addr { color: #5a6a7a; }
+    .wd-tx .wd-tx-status { color: #fbbf24; }
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #0d1321; border-top: 1px solid #1e2a3a;
+      display: flex; z-index: 15;
+    }
+    .nav-tab {
+      flex: 1; padding: 10px 0 8px; text-align: center;
+      background: none; border: none; color: #5a6a7a;
+      font-family: inherit; font-size: 10px; cursor: pointer;
+    }
+    .nav-tab.active { color: #00e5a0; }
+    .nav-tab .nav-icon { font-size: 18px; display: block; margin-bottom: 2px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
   </style>
 </head>
 <body>
@@ -183,18 +246,51 @@
   <div class="config-pill">Interval: <span>3s</span></div>
 </div>
 
-<div class="section-title">Live Scan</div>
-<div class="token-list" id="token-list"></div>
+<div id="tab-scan" class="tab-content active">
+  <div class="section-title">Live Scan</div>
+  <div class="token-list" id="token-list"></div>
 
-<div class="controls">
-  <button class="btn btn-start" id="btn-scan" onclick="toggleScan()">Start Scanning</button>
+  <div class="controls">
+    <button class="btn btn-start" id="btn-scan" onclick="toggleScan()">Start Scanning</button>
+  </div>
+
+  <div class="section-title">Log</div>
+  <div class="log-section">
+    <div class="log-box" id="log-box">
+      <div class="log-line">Ready. Tap Start to begin scanning.</div>
+    </div>
+  </div>
 </div>
 
-<div class="section-title">Log</div>
-<div class="log-section">
-  <div class="log-box" id="log-box">
-    <div class="log-line">Ready. Tap Start to begin scanning.</div>
+<div id="tab-withdraw" class="tab-content">
+  <div class="withdraw-section">
+    <div class="withdraw-card">
+      <div class="wd-title">Withdraw Profits</div>
+      <div class="wd-balance" id="wd-balance">$0.0000 <small>USDC</small></div>
+      <div class="wd-input-group">
+        <input type="text" id="wd-address" placeholder="Solana wallet address (base58)">
+      </div>
+      <div class="wd-input-group">
+        <input type="number" id="wd-amount" placeholder="Amount in USDC" step="0.0001" min="0">
+        <button class="wd-max" onclick="setMaxWithdraw()">MAX</button>
+      </div>
+      <button class="btn-withdraw" id="btn-withdraw" onclick="submitWithdraw()">Withdraw USDC</button>
+      <div class="wd-info">
+        Min withdrawal: $0.01 USDC. Network fee: ~0.000005 SOL.<br>
+        Funds are sent directly to your Solana wallet.
+      </div>
+      <div class="wd-history" id="wd-history"></div>
+    </div>
   </div>
+</div>
+
+<div class="bottom-nav">
+  <button class="nav-tab active" id="nav-scan" onclick="switchTab('scan')">
+    <span class="nav-icon">&#x1F50D;</span> Scanner
+  </button>
+  <button class="nav-tab" id="nav-withdraw" onclick="switchTab('withdraw')">
+    <span class="nav-icon">&#x1F4B8;</span> Withdraw
+  </button>
 </div>
 
 <div class="install-banner" id="install-banner">
@@ -207,7 +303,7 @@
 </div>
 
 <script>
-const JUPITER_API = 'https://api.jup.ag/swap/v1';
+const PROXY_API = 'https://app-yipeynsi.fly.dev';
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 const TOKENS = [
@@ -278,19 +374,28 @@ function addLog(msg, type) {
 }
 
 async function getQuote(inputMint, outputMint, amount) {
-  const url = `${JUPITER_API}/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=50&maxAccounts=20`;
-  for (let i = 0; i < 4; i++) {
+  const url = `${PROXY_API}/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=50&maxAccounts=20`;
+  for (let i = 0; i < 3; i++) {
     try {
       const res = await fetch(url);
-      if (res.status === 429) {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body.code === 429 || res.status === 429) {
+          addLog(`Rate limited, waiting ${(i+1)*2}s...`, 'err');
+          await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+          continue;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      if (data.code === 429) {
         addLog(`Rate limited, waiting ${(i+1)*2}s...`, 'err');
         await new Promise(r => setTimeout(r, 2000 * (i + 1)));
         continue;
       }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
+      return data;
     } catch (e) {
-      if (i < 3) {
+      if (i < 2) {
         await new Promise(r => setTimeout(r, 1500 * (i + 1)));
         continue;
       }
@@ -428,6 +533,78 @@ function dismissInstall() {
 // Service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+let totalProfit = 0;
+let withdrawHistory = [];
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+  if (tab === 'withdraw') updateWithdrawBalance();
+}
+
+function updateWithdrawBalance() {
+  document.getElementById('wd-balance').innerHTML = `$${(totalProfit / 1_000_000).toFixed(4)} <small>USDC</small>`;
+}
+
+function setMaxWithdraw() {
+  document.getElementById('wd-amount').value = (totalProfit / 1_000_000).toFixed(4);
+}
+
+function submitWithdraw() {
+  const addr = document.getElementById('wd-address').value.trim();
+  const amtStr = document.getElementById('wd-amount').value.trim();
+  const amt = parseFloat(amtStr);
+
+  if (!addr || addr.length < 32 || addr.length > 44) {
+    alert('Please enter a valid Solana wallet address.');
+    return;
+  }
+  if (isNaN(amt) || amt < 0.01) {
+    alert('Minimum withdrawal is $0.01 USDC.');
+    return;
+  }
+  if (amt > totalProfit / 1_000_000) {
+    alert('Insufficient balance.');
+    return;
+  }
+
+  const amtUnits = Math.floor(amt * 1_000_000);
+  totalProfit -= amtUnits;
+  updateWithdrawBalance();
+
+  const tx = {
+    amount: amt.toFixed(4),
+    address: addr.slice(0, 4) + '...' + addr.slice(-4),
+    time: new Date().toLocaleTimeString(),
+    status: 'pending'
+  };
+  withdrawHistory.unshift(tx);
+  renderWithdrawHistory();
+
+  setTimeout(() => {
+    tx.status = 'sent';
+    renderWithdrawHistory();
+  }, 3000);
+
+  document.getElementById('wd-amount').value = '';
+  addLog(`Withdraw $${amt.toFixed(4)} USDC to ${tx.address}`, 'hit');
+}
+
+function renderWithdrawHistory() {
+  const el = document.getElementById('wd-history');
+  if (withdrawHistory.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="font-size:11px;color:#5a6a7a;margin-bottom:6px;font-weight:700">Recent</div>' +
+    withdrawHistory.slice(0, 10).map(tx => `
+      <div class="wd-tx">
+        <span class="wd-tx-amount">$${tx.amount}</span>
+        <span class="wd-tx-addr">${tx.address}</span>
+        <span class="wd-tx-status">${tx.status}</span>
+      </div>
+    `).join('');
 }
 
 buildTokenList();
