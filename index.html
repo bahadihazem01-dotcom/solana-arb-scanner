@@ -243,6 +243,50 @@
     }
     #app-content { display: none; }
     #app-content.unlocked { display: block; }
+    .bot-section { padding: 12px 16px 70px; }
+    .bot-card {
+      background: #111827; border: 1px solid #1e2a3a; border-radius: 12px;
+      padding: 16px; margin-bottom: 12px;
+    }
+    .bot-card .bot-title {
+      font-size: 13px; font-weight: 700; color: #00d4ff; margin-bottom: 10px;
+    }
+    .bot-status-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; font-size: 12px;
+    }
+    .bot-status-row .label { color: #5a6a7a; }
+    .bot-status-row .val { font-weight: 700; }
+    .bot-status-row .val.green { color: #00e5a0; }
+    .bot-status-row .val.red { color: #ef4444; }
+    .bot-status-row .val.cyan { color: #00d4ff; }
+    .bot-status-row .val.yellow { color: #fbbf24; }
+    .bot-controls { display: flex; gap: 10px; margin-top: 12px; }
+    .bot-controls .btn { flex: 1; padding: 12px; font-size: 13px; }
+    .bot-indicator {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      margin-right: 6px; vertical-align: middle;
+    }
+    .bot-indicator.on { background: #00e5a0; animation: pulse 2s infinite; }
+    .bot-indicator.off { background: #ef4444; }
+    .bot-indicator.err { background: #fbbf24; }
+    .trade-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-top: 1px solid #1e2a3a; font-size: 11px;
+    }
+    .trade-row .trade-symbol { font-weight: 700; color: #e0e6ed; min-width: 50px; }
+    .trade-row .trade-profit { font-weight: 700; }
+    .trade-row .trade-profit.green { color: #00e5a0; }
+    .trade-row .trade-profit.red { color: #ef4444; }
+    .trade-row .trade-status { font-size: 10px; }
+    .trade-row .trade-status.executed { color: #00e5a0; }
+    .trade-row .trade-status.failed { color: #ef4444; }
+    .trade-row .trade-time { color: #5a6a7a; }
+    .trade-link { color: #00d4ff; text-decoration: none; font-size: 10px; }
+    .wallet-addr {
+      font-size: 11px; color: #5a6a7a; word-break: break-all;
+      background: #080c14; padding: 6px 8px; border-radius: 6px; margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -305,6 +349,58 @@
   </div>
 </div>
 
+<div id="tab-bot" class="tab-content">
+  <div class="bot-section">
+    <div class="bot-card">
+      <div class="bot-title">Bot Control</div>
+      <div class="bot-status-row">
+        <span class="label">Status</span>
+        <span class="val" id="bot-status"><span class="bot-indicator off"></span> Stopped</span>
+      </div>
+      <div class="bot-status-row">
+        <span class="label">Wallet</span>
+        <span class="val cyan" id="bot-wallet">—</span>
+      </div>
+      <div class="bot-status-row">
+        <span class="label">RPC</span>
+        <span class="val" id="bot-rpc">—</span>
+      </div>
+      <div class="bot-status-row">
+        <span class="label">Scans</span>
+        <span class="val cyan" id="bot-scans">0</span>
+      </div>
+      <div class="bot-status-row">
+        <span class="label">Hits</span>
+        <span class="val yellow" id="bot-hits">0</span>
+      </div>
+      <div class="bot-status-row">
+        <span class="label">Total Profit</span>
+        <span class="val green" id="bot-profit">$0.0000</span>
+      </div>
+      <div class="bot-status-row">
+        <span class="label">Best Profit</span>
+        <span class="val green" id="bot-best">$0.0000</span>
+      </div>
+      <div class="bot-status-row">
+        <span class="label">Last Scan</span>
+        <span class="val" id="bot-last">—</span>
+      </div>
+      <div class="bot-status-row">
+        <span class="label">Errors</span>
+        <span class="val red" id="bot-errors">0</span>
+      </div>
+      <div class="bot-controls">
+        <button class="btn btn-start" id="btn-bot-start" onclick="startBot()">Start Bot</button>
+        <button class="btn btn-stop" id="btn-bot-stop" onclick="stopBot()" style="display:none">Stop Bot</button>
+      </div>
+    </div>
+    <div class="bot-card">
+      <div class="bot-title">Recent Trades</div>
+      <div id="bot-trades"><div style="font-size:11px;color:#5a6a7a">No trades yet. Start the bot to begin.</div></div>
+    </div>
+  </div>
+</div>
+
 <div id="tab-withdraw" class="tab-content">
   <div class="withdraw-section">
     <div class="withdraw-card">
@@ -330,6 +426,9 @@
 <div class="bottom-nav">
   <button class="nav-tab active" id="nav-scan" onclick="switchTab('scan')">
     <span class="nav-icon">&#x1F50D;</span> Scanner
+  </button>
+  <button class="nav-tab" id="nav-bot" onclick="switchTab('bot')">
+    <span class="nav-icon">&#x1F916;</span> Bot
   </button>
   <button class="nav-tab" id="nav-withdraw" onclick="switchTab('withdraw')">
     <span class="nav-icon">&#x1F4B8;</span> Withdraw
@@ -714,6 +813,89 @@ if (localStorage.getItem('arb_pin_ok') === '1') {
 }
 
 buildTokenList();
+
+let botPollTimer = null;
+
+async function fetchBotStatus() {
+  try {
+    const res = await fetch(PROXY_API + '/bot/status');
+    const data = await res.json();
+    const s = data.stats;
+    const statusEl = document.getElementById('bot-status');
+    if (data.running) {
+      statusEl.innerHTML = '<span class="bot-indicator on"></span> Running';
+    } else if (s.status.startsWith('error')) {
+      statusEl.innerHTML = '<span class="bot-indicator err"></span> ' + s.status;
+    } else {
+      statusEl.innerHTML = '<span class="bot-indicator off"></span> Stopped';
+    }
+    document.getElementById('bot-wallet').textContent = data.wallet ? data.wallet.slice(0,4) + '...' + data.wallet.slice(-4) : 'Not configured';
+    document.getElementById('bot-rpc').innerHTML = data.rpc_configured ? '<span style="color:#00e5a0">Connected</span>' : '<span style="color:#ef4444">Not set</span>';
+    document.getElementById('bot-scans').textContent = s.scans;
+    document.getElementById('bot-hits').textContent = s.hits;
+    document.getElementById('bot-profit').textContent = '$' + s.total_profit.toFixed(4);
+    document.getElementById('bot-best').textContent = '$' + s.best_profit.toFixed(4);
+    document.getElementById('bot-last').textContent = s.last_scan || '—';
+    document.getElementById('bot-errors').textContent = s.errors;
+    totalProfit = Math.floor(s.total_profit * 1_000_000);
+    document.getElementById('btn-bot-start').style.display = data.running ? 'none' : 'block';
+    document.getElementById('btn-bot-stop').style.display = data.running ? 'block' : 'none';
+    renderTrades(data.recent_trades || []);
+  } catch(e) {
+    document.getElementById('bot-status').innerHTML = '<span class="bot-indicator err"></span> Offline';
+  }
+}
+
+function renderTrades(trades) {
+  const el = document.getElementById('bot-trades');
+  if (!trades.length) { el.innerHTML = '<div style="font-size:11px;color:#5a6a7a">No trades yet.</div>'; return; }
+  el.innerHTML = trades.map(t => {
+    const profitClass = t.net_profit >= 0 ? 'green' : 'red';
+    const sign = t.net_profit >= 0 ? '+' : '';
+    const txLink = t.tx_sig ? '<a class="trade-link" href="https://solscan.io/tx/' + t.tx_sig + '" target="_blank">view</a>' : '';
+    return '<div class="trade-row">' +
+      '<span class="trade-time">' + t.time + '</span>' +
+      '<span class="trade-symbol">' + t.symbol + '</span>' +
+      '<span class="trade-profit ' + profitClass + '">' + sign + '$' + t.net_profit.toFixed(4) + '</span>' +
+      '<span class="trade-status ' + t.status + '">' + t.status + '</span>' +
+      txLink + '</div>';
+  }).join('');
+}
+
+async function startBot() {
+  document.getElementById('btn-bot-start').disabled = true;
+  document.getElementById('btn-bot-start').textContent = 'Starting...';
+  try {
+    await fetch(PROXY_API + '/bot/start', { method: 'POST' });
+    addLog('Bot started on server', 'hit');
+  } catch(e) {
+    addLog('Failed to start bot: ' + e.message, 'err');
+  }
+  document.getElementById('btn-bot-start').disabled = false;
+  document.getElementById('btn-bot-start').textContent = 'Start Bot';
+  fetchBotStatus();
+}
+
+async function stopBot() {
+  document.getElementById('btn-bot-stop').disabled = true;
+  document.getElementById('btn-bot-stop').textContent = 'Stopping...';
+  try {
+    await fetch(PROXY_API + '/bot/stop', { method: 'POST' });
+    addLog('Bot stopped', 'hit');
+  } catch(e) {
+    addLog('Failed to stop bot: ' + e.message, 'err');
+  }
+  document.getElementById('btn-bot-stop').disabled = false;
+  document.getElementById('btn-bot-stop').textContent = 'Stop Bot';
+  fetchBotStatus();
+}
+
+function startBotPolling() {
+  fetchBotStatus();
+  botPollTimer = setInterval(fetchBotStatus, 5000);
+}
+
+startBotPolling();
 </script>
 </body>
 </html>
