@@ -467,7 +467,7 @@ async function scanToken(token) {
     const tokenAmount = parseInt(buyQuote.outAmount);
     if (tokenAmount <= 0) { profitEl.textContent = '—'; pctEl.textContent = ''; return null; }
 
-    await new Promise(r => setTimeout(r, 1200));
+    await new Promise(r => setTimeout(r, 800));
 
     const sellQuote = await getQuote(token.mint, USDC_MINT, tokenAmount);
     const usdcOut = parseInt(sellQuote.outAmount);
@@ -518,7 +518,7 @@ async function runScan() {
         bestThisScan = result;
       }
     }
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 1000));
   }
 
   if (bestThisScan) {
