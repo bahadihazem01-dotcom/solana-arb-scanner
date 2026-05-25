@@ -853,9 +853,10 @@ function renderTrades(trades) {
     const profitClass = t.net_profit >= 0 ? 'green' : 'red';
     const sign = t.net_profit >= 0 ? '+' : '';
     const txLink = t.tx_sig ? '<a class="trade-link" href="https://solscan.io/tx/' + t.tx_sig + '" target="_blank">view</a>' : '';
+    const loanAmt = t.flash_amount ? '$' + Number(t.flash_amount).toLocaleString() : '';
     return '<div class="trade-row">' +
       '<span class="trade-time">' + t.time + '</span>' +
-      '<span class="trade-symbol">' + t.symbol + '</span>' +
+      '<span class="trade-symbol">' + t.symbol + ' <small style="color:#5a6a7a">' + loanAmt + '</small></span>' +
       '<span class="trade-profit ' + profitClass + '">' + sign + '$' + t.net_profit.toFixed(4) + '</span>' +
       '<span class="trade-status ' + t.status + '">' + t.status + '</span>' +
       txLink + '</div>';
