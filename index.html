@@ -329,9 +329,9 @@
 </div>
 
 <div class="config-bar" id="config-bar">
-  <div class="config-pill">Loan: <span id="cfg-amount">$10</span></div>
+  <div class="config-pill">Loan: <span id="cfg-amount">Dynamic up to $500K</span></div>
   <div class="config-pill">Fee: <span>30bps</span></div>
-  <div class="config-pill">Interval: <span>3s</span></div>
+  <div class="config-pill">Bundle: <span>Jito</span></div>
 </div>
 
 <div id="tab-scan" class="tab-content active">
@@ -453,13 +453,18 @@ const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 const TOKENS = [
   { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
+  { symbol: 'ETH', mint: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs' },
+  { symbol: 'WETH', mint: '2FPyTwcZLUg1MDrwsyoP4D6s1tM6hAKFXDSMA9EqSmUj' },
   { symbol: 'USDT', mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB' },
   { symbol: 'JUP', mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN' },
   { symbol: 'BONK', mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' },
   { symbol: 'WIF', mint: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm' },
   { symbol: 'RENDER', mint: 'rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof' },
   { symbol: 'PYTH', mint: 'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3' },
-  { symbol: 'ETHER', mint: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs' },
+  { symbol: 'RAY', mint: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R' },
+  { symbol: 'ORCA', mint: 'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE' },
+  { symbol: 'MSOL', mint: 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So' },
+  { symbol: 'JITO', mint: 'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn' },
 ];
 
 let mode = 'flash';
@@ -469,7 +474,7 @@ let scanCount = 0;
 let hitCount = 0;
 let bestProfit = null;
 const FLASH_FEE_BPS = 30;
-let flashAmount = 10_000_000; // $10 USDC
+let flashAmount = 500_000_000; // $500 USDC default
 let capitalAmount = 200_000; // $0.20 USDC
 
 function setMode(m) {
@@ -477,7 +482,7 @@ function setMode(m) {
   document.getElementById('btn-flash').classList.toggle('active', m === 'flash');
   document.getElementById('btn-capital').classList.toggle('active', m === 'capital');
   document.getElementById('config-bar').style.display = m === 'flash' ? 'flex' : 'none';
-  addLog(`Mode: ${m === 'flash' ? 'Flash Loan ($10 from Solend)' : 'Own Capital ($0.20)'}`);
+  addLog(`Mode: ${m === 'flash' ? 'Flash Loan (dynamic up to $500K via Jito)' : 'Own Capital ($0.20)'}`);
 }
 
 function getAmount() {
