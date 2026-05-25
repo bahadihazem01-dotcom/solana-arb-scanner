@@ -474,7 +474,7 @@ let scanCount = 0;
 let hitCount = 0;
 let bestProfit = null;
 const FLASH_FEE_BPS = 30;
-let flashAmount = 500_000_000; // $500 USDC default
+let flashAmount = 10_000_000; // $10 USDC for scanner display (bot uses dynamic up to $500K)
 let capitalAmount = 200_000; // $0.20 USDC
 
 function setMode(m) {
@@ -569,13 +569,16 @@ async function scanToken(token) {
     netEl.textContent = '';
 
     const buyQuote = await getQuote(USDC_MINT, token.mint, amount);
+    if (!buyQuote || !buyQuote.outAmount) { profitEl.textContent = '—'; pctEl.textContent = 'no route'; return null; }
     const tokenAmount = parseInt(buyQuote.outAmount);
-    if (tokenAmount <= 0) { profitEl.textContent = '—'; pctEl.textContent = ''; return null; }
+    if (!tokenAmount || isNaN(tokenAmount) || tokenAmount <= 0) { profitEl.textContent = '—'; pctEl.textContent = ''; return null; }
 
     await new Promise(r => setTimeout(r, 800));
 
     const sellQuote = await getQuote(token.mint, USDC_MINT, tokenAmount);
+    if (!sellQuote || !sellQuote.outAmount) { profitEl.textContent = '—'; pctEl.textContent = 'no route'; return null; }
     const usdcOut = parseInt(sellQuote.outAmount);
+    if (isNaN(usdcOut)) { profitEl.textContent = '—'; pctEl.textContent = 'error'; return null; }
     const profit = usdcOut - amount;
     const pct = ((profit / amount) * 100).toFixed(4);
 
