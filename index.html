@@ -454,7 +454,6 @@ const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const TOKENS = [
   { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
   { symbol: 'ETH', mint: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs' },
-  { symbol: 'WETH', mint: '2FPyTwcZLUg1MDrwsyoP4D6s1tM6hAKFXDSMA9EqSmUj' },
   { symbol: 'USDT', mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB' },
   { symbol: 'JUP', mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN' },
   { symbol: 'BONK', mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' },
@@ -490,7 +489,7 @@ function getAmount() {
 }
 
 function fmt(n) { return (n / 1_000_000).toFixed(6); }
-function fmtShort(n) { return '$' + (n / 1_000_000).toFixed(4); }
+function fmtShort(n) { const v = n / 1_000_000; return isNaN(v) ? '—' : '$' + v.toFixed(4); }
 
 // Build token list UI
 function buildTokenList() {
@@ -580,6 +579,7 @@ async function scanToken(token) {
     const usdcOut = parseInt(sellQuote.outAmount);
     if (isNaN(usdcOut)) { profitEl.textContent = '—'; pctEl.textContent = 'error'; return null; }
     const profit = usdcOut - amount;
+    if (isNaN(profit)) { profitEl.textContent = '—'; pctEl.textContent = 'error'; return null; }
     const pct = ((profit / amount) * 100).toFixed(4);
 
     const sign = profit >= 0 ? '+' : '';
