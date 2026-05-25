@@ -281,6 +281,7 @@
     .trade-row .trade-status { font-size: 10px; }
     .trade-row .trade-status.executed { color: #00e5a0; }
     .trade-row .trade-status.failed { color: #ef4444; }
+    .trade-row .trade-status.sim_fail { color: #fbbf24; }
     .trade-row .trade-time { color: #5a6a7a; }
     .trade-link { color: #00d4ff; text-decoration: none; font-size: 10px; }
     .wallet-addr {
@@ -858,7 +859,7 @@ function renderTrades(trades) {
       '<span class="trade-time">' + t.time + '</span>' +
       '<span class="trade-symbol">' + t.symbol + ' <small style="color:#5a6a7a">' + loanAmt + '</small></span>' +
       '<span class="trade-profit ' + profitClass + '">' + sign + '$' + t.net_profit.toFixed(4) + '</span>' +
-      '<span class="trade-status ' + t.status + '">' + t.status + '</span>' +
+      '<span class="trade-status ' + t.status + '">' + (t.status === 'sim_fail' ? 'sim fail' : t.status) + '</span>' +
       txLink + '</div>';
   }).join('');
 }
